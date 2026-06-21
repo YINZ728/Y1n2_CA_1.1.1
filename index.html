@@ -1717,7 +1717,52 @@ function worldToScreen(pos, m) { const x = m[0]*pos.x + m[4]*pos.y + m[8]*pos.z 
 const drawPlayerInfo = (x, y, w, h, dist, teamId, currentHP, maxHP, name, weapon, isAI, isTeammate) => { let color = isTeammate ? '#00BFFF' : (isAI ? 'white' : '#FFA500'); let boxColor = isTeammate ? '#00BFFF' : window.draw.boxColor; if(window.draw.line) drawLine(window.sWidth / 2, 0, x, y - 15, color, 0.8); if(x < -50 || y < -50 || x > window.sWidth + 50 || y > window.sHeight + 50) { let tx = Math.max(20, Math.min(window.sWidth - 20, x)), ty = Math.max(20, y / 2); let outText = ""; if(window.draw.team) outText += `[${teamId}] `; if(window.draw.dis) outText += `${dist}m`; if(outText !== "") drawText(outText.trim(), tx, ty, 12, color); return; } let topText = ""; if(window.draw.team) topText += `[${teamId}] `; if(window.draw.dis) topText += `${dist}m`; if(topText !== "") drawText(topText.trim(), x, y - 20, 7, "white"); if(window.draw.hp && maxHP > 0) { const hpP = Math.max(0, Math.min(100, (currentHP / maxHP) * 100)), hpFH = Math.ceil((hpP / 100) * h); let hpC = hpP >= 70 ? '#00FF00' : (hpP >= 30 ? '#FFFF00' : '#FF0000'); drawRect(x - w/2 - 4, y, 2, h, 'rgba(0,0,0,0.5)', true); drawRect(x - w/2 - 4, y + (h - hpFH), 2, hpFH, hpC, true); } if(window.draw.box) { if(window.draw.boxStyle === 'corner') drawCornerBox(x - w/2, y, w, h, boxColor, 0.8); else drawRect(x - w/2, y, w, h, boxColor, false, 0.5); } if(window.draw.name) drawText(name.length > 8 ? name.slice(0, 6) + '...' : name, x, y - 10, 8, color); }
 function getCachedGameData() { try { cachedMatrix = getViewMatrix(); if(!cachedMatrix) return null; if(window.app) window.app.maxPlayers = getPlayerCount(); return { Matrix: cachedMatrix }; } catch(e) { return null; } }
 function updateEntityCache(M) { let nC = []; let eC = 0; try { let pc = window.app ? window.app.maxPlayers : 0; let maxIter = Math.max(pc, 24); let minScore = 99999; let localPlayerIndex = -1; for (let i = 0; i < maxIter; i++) { try { let pA = getPlayerByIndex(i); if (!pA) continue; let cHP = getCurrentHP(pA); if (cHP <= 0 || cHP > 100000) continue; let pos = getPlayerPosition(pA); if (!pos || (pos.x === 0 && pos.y === 0 && pos.z === 0)) continue; let rB = worldToScreen({ x: pos.x, y: pos.y, z: pos.z }, M); if (rB && rB.dist > 0 && rB.dist < 5.0) { let score = rB.dist * 50 + Math.abs(rB.x - window.sWidth / 2); if (score < minScore) { minScore = score; localPlayerIndex = i; } } } catch (e) { continue; } } if (localPlayerIndex !== -1 && minScore < 300) { try { let lp = getPlayerByIndex(localPlayerIndex); let currentTid = getPlayerTeamId(lp); teamIdHistory.push(currentTid); if (teamIdHistory.length > 30) teamIdHistory.shift(); let counts = {}; let maxVotes = 0; let stableTid = myTeamId; for (let id of teamIdHistory) { counts[id] = (counts[id] || 0) + 1; if (counts[id] > maxVotes) { maxVotes = counts[id]; stableTid = id; } } if (maxVotes >= 10) myTeamId = stableTid; } catch (e) {} } for (let i = 0; i < maxIter; i++) { try { if (i === localPlayerIndex && minScore < 300) continue; let pA = getPlayerByIndex(i); if (!pA) continue; let cHP = getCurrentHP(pA); if (cHP <= 0 || cHP > 100000) continue; let pos = getPlayerPosition(pA); if (!pos || (pos.x === 0 && pos.y === 0 && pos.z === 0)) continue; let tId = getPlayerTeamId(pA); let isTeammate = window.draw.soloMode ? false : (tId === myTeamId); if (window.draw.filterTeam && isTeammate) continue; if (!isTeammate) eC++; let rB = worldToScreen({ x: pos.x, y: pos.y - 0.1, z: pos.z }, M); if (!rB) continue; let rT = worldToScreen({ x: pos.x, y: pos.y + 1.5, z: pos.z }, M); if (!rT) continue; let h = rB.y - rT.y; let w = h / 2; let dist = rB.dist; if (dist > 500) continue; if (h < 2 || h > 2000) continue; nC.push({ x: rT.x, y: rT.y, w: w, h: h, dist: Math.round(dist), teamId: tId, name: getPlayerName(pA), currentHP: cHP, maxHP: getMaxHP(pA), weapon: "", isAI: false, isTeammate: isTeammate }); } catch (e) { continue; } } } catch (e) {} EntityCache = nC; return eC; }
-function renderESP() { closeDraw(); let now = Date.now(); if(now - lastFrameTime < (1000 / window.draw.slide) - 3) return; lastFrameTime = now; frameCount++; if(now - lastFpsUpdate >= 1000) { window.fps = frameCount; frameCount = 0; lastFpsUpdate = now; } if(now - lastRenderCacheUpdate > 1000) { cleanupCache(); lastRenderCacheUpdate = now; } if(baseAddr === 0) { try { let r = h5gg.getRangesList('UnityFramework'); if(r && r.length > 0) baseAddr = Number(r[0].start); } catch(e) {} if(baseAddr === 0) { drawText("獲取基址失敗...", window.sWidth/2, window.sHeight/2, 20, '#F00'); return; } } let gD = getCachedGameData(), tE = 0; if(gD) tE = updateEntityCache(gD.Matrix); for(let e of EntityCache) drawPlayerInfo(e.x, e.y, e.w, e.h, e.dist, e.teamId, e.currentHP, e.maxHP, e.name, e.weapon, e.isAI, e.isTeammate); if(window.fps) drawText(`FPS: ${window.fps}`, 50, 30, 14, '#4caf50'); let countY = window.sHeight * 0.11; if(tE === 0) drawText("Count:0", window.sWidth / 2, countY, 17, "#00BFFF", true); else drawText(`Count:${tE}`, window.sWidth / 2, countY, 17, "red", true); }
+function renderESP() { 
+    frameCount++; 
+    let now = Date.now(); 
+    
+    // FPS 計算
+    if(now - lastFpsUpdate >= 1000) { window.fps = frameCount; frameCount = 0; lastFpsUpdate = now; } 
+    if(now - lastRenderCacheUpdate > 1000) { cleanupCache(); lastRenderCacheUpdate = now; } 
+    
+    // 獲取 Unity 遊戲基址
+    if(baseAddr === 0) { 
+        try { 
+            let r = h5gg.getRangesList('UnityFramework'); 
+            if(r && r.length > 0) baseAddr = Number(r[0].start); 
+        } catch(e) {} 
+        if(baseAddr === 0) { 
+            closeDraw(); // 繪製錯誤提示前，清空畫布
+            drawText("獲取基址失敗...", window.sWidth/2, window.sHeight/2, 20, '#F00'); 
+            return; 
+        } 
+    } 
+    
+    // 🚀 【耗時運算區】：先讀取記憶體與計算 3D 轉 2D 矩陣
+    let gD = getCachedGameData();
+    let enemyCount = 0; 
+    
+    if(gD) {
+        enemyCount = updateEntityCache(gD.Matrix); 
+    }
+    
+    // 👇 ✅ 【關鍵修復】：等所有耗時運算都結束了，才瞬間清空舊畫面！
+    closeDraw(); 
+
+    // 執行每個實體的繪製邏輯
+    for(let e of EntityCache) {
+        drawPlayerInfo(e.x, e.y, e.w, e.h, e.dist, e.teamId, e.currentHP, e.maxHP, e.name, e.weapon, e.isAI, e.isTeammate); 
+    }
+    
+    // 繪製頂部狀態列
+    if(window.fps) drawText(`FPS: ${window.fps}`, 50, 30, 14, '#4caf50'); 
+    let countY = window.sHeight * 0.11; 
+    if(enemyCount === 0) {
+        drawText("Count:0", window.sWidth / 2, countY, 17, "#00BFFF", true); 
+    } else {
+        drawText(`Count:${enemyCount}`, window.sWidth / 2, countY, 17, "red", true); 
+    }
+}
 function renderLoop() { if (window.draw.state) { renderESP(); requestAnimationFrame(renderLoop); } }
 
 // ==================== Vue 控制與初始化區域 ====================
