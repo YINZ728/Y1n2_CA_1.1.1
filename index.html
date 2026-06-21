@@ -52,14 +52,20 @@
         /* 禁用全局選取與長按，提升觸控體驗 */
         * {
             margin: 0; padding: 0; box-sizing: border-box;
-            user-select: none;
+            /* 👇 新增：徹底禁用系統原生长按菜單與文字選取 */
+            -webkit-touch-callout: none !important;
+            -webkit-user-select: none !important;
+            -khtml-user-select: none !important;
+            -moz-user-select: none !important;
+            -ms-user-select: none !important;
+            user-select: none !important;
             -webkit-tap-highlight-color: transparent !important;
             touch-action: manipulation;
         }
 
         *:not(input, checkbox, textarea) {
-            -webkit-touch-callout: none;
-            user-select: none;
+            -webkit-touch-callout: none !important;
+            user-select: none !important;
         }
 
         /* 繪製層 Canvas，必須穿透點擊 */
@@ -446,9 +452,36 @@
 
 <script>  
 // ==================== 1. 初始化與安全防護 ====================
-// 防止遊戲畫面跟著輸入框失去焦點
+
+// 👇 新增：徹底禁用全域右鍵選單與文字選取事件
+window.addEventListener('contextmenu', function (e) { e.preventDefault(); });
+window.addEventListener('selectstart', function (e) { e.preventDefault(); });
+
+// 👇 新增：強制隱藏 iOS 鍵盤的終極大招
+function forceHideKeyboard() {
+    if (document.activeElement) document.activeElement.blur();
+    window.blur();
+    
+    // 建立一個隱形的唯讀輸入框並瞬間切換焦點，強迫系統收回原生虛擬鍵盤
+    let input = document.createElement('input');
+    input.setAttribute('type', 'text');
+    input.setAttribute('readonly', 'readonly');
+    input.style.position = 'absolute';
+    input.style.top = '-9999px';
+    document.body.appendChild(input);
+    input.focus();
+    
+    setTimeout(() => {
+        input.blur();
+        document.body.removeChild(input);
+    }, 10);
+}
+
+// 防止遊戲畫面跟著輸入框失去焦點，同時觸發強制關閉鍵盤
 document.addEventListener('focus', function(e) { if (e.target) e.target.blur(); }, true);
-document.addEventListener('touchstart', function(e) { if (document.activeElement) document.activeElement.blur(); }, { passive: false });
+document.addEventListener('touchstart', function(e) { 
+    if (document.activeElement) document.activeElement.blur(); 
+}, { passive: false });
 
 // 卡密授權驗證系統
 if (localStorage.getItem('script_auth_passed') !== 'true') {
@@ -1218,20 +1251,12 @@ const drawRect = (x, y, w, h, color, isFill = true, lineWidth = 0.7) => {
     else window.ctx.strokeRect(x, y, w, h); 
 }
 
-// 效能優化版的文字繪製：使用「偽描邊」取代耗效能的 shadowBlur
 const drawText = (text, x, y, size, color, isFill = true) => { 
     x *= window.iosScale; y *= window.iosScale; size *= window.iosScale; 
-    window.ctx.save(); 
-    window.ctx.textAlign = "center"; 
-    window.ctx.textBaseline = "middle"; 
-    window.ctx.font = `bold ${size}px Arial`; 
-    if(isFill) {
-        window.ctx.fillStyle = "black";
-        window.ctx.fillText(text, x + 1, y + 1); // 右下黑底
-        window.ctx.fillText(text, x - 1, y - 1); // 左上黑底
-        window.ctx.fillStyle = color;
-        window.ctx.fillText(text, x, y);         // 中間原色文字
-    } 
+    window.ctx.save(); window.ctx.textAlign = "center"; window.ctx.textBaseline = "middle"; 
+    window.ctx.fillStyle = color; window.ctx.font = `bold ${size}px Arial`; 
+    window.ctx.shadowColor = "rgba(0,0,0,0.7)"; window.ctx.shadowBlur = size * 0.3; 
+    if(isFill) window.ctx.fillText(text, x, y); 
     window.ctx.restore(); 
 }
 
@@ -1524,15 +1549,11 @@ var app = new Vue({
             menu.style.display = 'none';
             this.menuVisible = false;
             try { setWindowTouch(false); } catch(e){} // 穿透事件傳遞給 h5gg
-            
-            // 👇 關閉菜單時，如果防錄屏開著，就還原防錄屏狀態
-            if (this.zhiboMode) {
-                try { h5gg.loadPlugin("ayHide", "h5gg_hideview.dylib").changeHidden(1); } catch(e){}
-            }
+            forceHideKeyboard(); // 👇 關閉菜單時強制隱藏鍵盤
         },
         
         toggleZhibo() {
-            // 👇 加入防錄屏調用邏輯
+            // 👇 只有在這裡才會呼叫防錄屏 API，絕不干擾菜單開關
             try {
                 let plugin = h5gg.loadPlugin("ayHide", "h5gg_hideview.dylib");
                 if (this.zhiboMode) {
@@ -1541,6 +1562,8 @@ var app = new Vue({
                 } else {
                     plugin.changeHidden(0);
                     setButtonImage("https://github.com/YINZ728/Y1n2_CA_1.1/blob/main/AppIcon60x60@2x.png?raw=true");
+                    // 👇 當主播模式關閉，強制回收 UITextField 的焦點，避免摸到螢幕彈出鍵盤
+                    setTimeout(forceHideKeyboard, 50);
                 }
             } catch(e) {
                 console.log("防錄屏切換失敗:", e);
@@ -1638,21 +1661,12 @@ try {
             menu.style.display = 'block';
             app.menuVisible = true;
             try { setWindowTouch(true); } catch(e){}
-            
-            // 👇 打開菜單時，暫時把防錄屏關掉，避免無法點擊 UI
-            if (app.zhiboMode) {
-                try { h5gg.loadPlugin("ayHide", "h5gg_hideview.dylib").changeHidden(0); } catch(e){}
-            }
-            
+            forceHideKeyboard(); // 👇 打開菜單時強制隱藏鍵盤
         } else {
             menu.style.display = 'none';
             app.menuVisible = false;
             try { setWindowTouch(false); } catch(e){}
-            
-            // 👇 關閉菜單準備玩遊戲時，如果防錄屏開著，就讓它重新生效
-            if (app.zhiboMode) {
-                try { h5gg.loadPlugin("ayHide", "h5gg_hideview.dylib").changeHidden(1); } catch(e){}
-            }
+            forceHideKeyboard(); // 👇 關閉菜單時強制隱藏鍵盤
         }
     });
 } catch(e){}
