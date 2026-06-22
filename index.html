@@ -2,7 +2,7 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <title>Y1n2</title>
+    <title>Y1n2 - Clean ESP Edition</title>
     <meta name="viewport" content="width=device-width,initial-scale=1.0,user-scalable=no">
     <link rel="stylesheet" href="https://unpkg.com/element-ui@2.15.7/lib/theme-chalk/index.css">
     <script src="https://cdn.jsdelivr.net/npm/vue@2.6/dist/vue.min.js"></script>
@@ -359,7 +359,8 @@
                         <i :class="showOption4?'el-icon-caret-bottom':'el-icon-caret-right'" style="margin-right:5px;"></i><span>更新日誌</span>
                     </div>
                     <el-collapse-transition>
-                        <div v-show="showOption4" style="padding: 0 4px; font-size: 12px; line-height: 1.6;">
+                        
+                      <div v-show="showOption4" style="padding: 0 4px; font-size: 12px; line-height: 1.6;">
                           <p>2026/6/21:繪製寫法優化</p>
                           <p>2026/6/17:去除部分功能&新增繪製功能&UI更新</p>
                           <p>2026/4/25:白祥.景傳.虛傳無後</p>
@@ -696,7 +697,7 @@ function getPosAddr(pA) {
     return p5 + OFFSETS.POS_OFFSET6;
 }
 
-// ==================== [極致優化] 一號工人：0 延遲資料採集 ====================
+// ==================== [方案二：無狀態動態追蹤] 一號工人：資料採集 ====================
 setInterval(function() {
     if(baseAddr === 0) { 
         try { let r = h5gg.getRangesList('UnityFramework'); if(r && r.length > 0) baseAddr = Number(r[0].start); } catch(e) {} return; 
@@ -712,10 +713,16 @@ setInterval(function() {
     if(!header) return;
     header += OFFSETS.ARRAY_HEADER_OFFSET2;
     
-    let newCache = [];
+    let tempPlayers = [];
+    let m = getViewMatrix();
     
-    // 若遊戲剛開始或結束，重置自己座標
-    if (pc < 2) { window.myPlayerAddr = null; window.myPosAddr = null; }
+    // 每次重新計算，不鎖死
+    window.myPlayerAddr = null;
+    window.myPosAddr = null;
+    window.myTeamId = -1;
+
+    let minW = 9999;
+    let localPlayerIndex = -1;
 
     for(let i=0; i < Math.max(pc, 24); i++) {
         let pA = readPtr(header + (i * OFFSETS.PLAYER_STRIDE));
@@ -724,31 +731,34 @@ setInterval(function() {
         let posAddr = getPosAddr(pA);
         if(!posAddr) continue;
 
-        // 瞬間判斷自身陣營 (如果之前存過自己)
-        if (window.myPlayerAddr && pA === window.myPlayerAddr) {
-            window.myPosAddr = posAddr; 
-            window.myTeamId = readI32(pA + OFFSETS.TEAM_ID);
-        } else {
-            newCache.push({ pA: pA, posAddr: posAddr, teamId: readI32(pA + OFFSETS.TEAM_ID) });
-        }
-    }
-    
-    // 如果還沒找到自己，用攝影機距離鎖定 (只需抓一次)
-    if (!window.myPlayerAddr) {
-        let m = getViewMatrix();
-        if(m) {
-            for(let p of newCache) {
-                let px = readF32(p.posAddr), py = readF32(p.posAddr+4), pz = readF32(p.posAddr+8);
-                let w = m[3]*px + m[7]*py + m[11]*pz + m[15];
-                if(w > 0 && w < 4.0) {
-                    window.myPlayerAddr = p.pA;
-                    window.myPosAddr = p.posAddr;
-                    window.myTeamId = p.teamId;
-                    break;
-                }
+        let tId = readI32(pA + OFFSETS.TEAM_ID);
+        tempPlayers.push({ pA: pA, posAddr: posAddr, teamId: tId });
+
+        // 計算誰距離攝影機最近
+        if (m) {
+            let px = readF32(posAddr), py = readF32(posAddr+4), pz = readF32(posAddr+8);
+            let w = m[3]*px + m[7]*py + m[11]*pz + m[15];
+            
+            // w > 0 且小於 4.0 通常是本地玩家或觀戰對象
+            if (w > 0 && w < 4.0 && w < minW) {
+                minW = w;
+                localPlayerIndex = tempPlayers.length - 1;
             }
         }
     }
+    
+    let newCache = [];
+    for (let i = 0; i < tempPlayers.length; i++) {
+        if (i === localPlayerIndex) {
+            // 找到主角 (自己或觀戰對象)，設定為當前陣營
+            window.myPlayerAddr = tempPlayers[i].pA;
+            window.myPosAddr = tempPlayers[i].posAddr;
+            window.myTeamId = tempPlayers[i].teamId;
+        } else {
+            newCache.push(tempPlayers[i]);
+        }
+    }
+
     GlobalPlayerCache = newCache;
     cleanupCache();
 }, 500);
