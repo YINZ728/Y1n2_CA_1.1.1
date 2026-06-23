@@ -1030,7 +1030,7 @@ function processMagnet() {
     if (!window.myPosAddr || !window.myPlayerAddr) return; // 必須先獲取到自身座標
 
     let myHP = readF32(window.myPlayerAddr + OFFSETS.CURRENT_HP);
-    if (myHP <= 0 || myHP > 100000) return; // 死亡狀態不執行
+    if (myHP <= 0 || myHP > 100000) return; // 玩家自身死亡狀態不執行
 
     // 讀取自己當前座標
     let myX = readF32(window.myPosAddr);
@@ -1041,16 +1041,20 @@ function processMagnet() {
     let m = getViewMatrix();
     if (!m) return;
 
-    // m[3] 和 m[11] 代表了攝影機深度的 X 和 Z 投影方向 (Forward Vector)
     let dx = m[3];
     let dz = m[11];
     let len = Math.sqrt(dx * dx + dz * dz);
     if (len < 0.001) return;
 
-    // 計算前方 25 米的目標座標
-    let targetX = myX + 25 * (dx / len);
-    let targetY = myY + 0.5; // 高度稍微抬高 0.5，避免怪物卡進地板
-    let targetZ = myZ + 25 * (dz / len);
+    // 加入微小隨機抖動 (Jitter)，範圍約 0.05 米
+    // 作用：強制喚醒遊戲引擎的物理運算，避免怪物進入休眠狀態導致畫面不更新
+    let jitterX = (Math.random() - 0.5) * 0.1;
+    let jitterZ = (Math.random() - 0.5) * 0.1;
+
+    // 計算前方 25 米的目標座標，並加上抖動值
+    let targetX = myX + 25 * (dx / len) + jitterX;
+    let targetY = myY + 0.5; // 稍微抬高 0.5 避免卡地板
+    let targetZ = myZ + 25 * (dz / len) + jitterZ;
 
     // 獲取玩家陣列
     let sys = getPlayerSystem(); if (!sys) return;
@@ -1064,7 +1068,10 @@ function processMagnet() {
         if (!pA || pA === window.myPlayerAddr) continue;
 
         let cHP = readF32(pA + OFFSETS.CURRENT_HP);
-        if (cHP <= 0 || cHP > 100000) continue; // 不吸屍體
+        
+        // 【修改點】：把原本的 > 100000 拔掉，改成 > 999999999 (九億)
+        // 這樣就能吸到血量超高的 Boss，同時仍保有過濾無效垃圾數據的功能
+        if (cHP <= 0 || cHP > 999999999) continue; 
 
         let tId = readI32(pA + OFFSETS.TEAM_ID);
         if (tId <= 0 || tId >= 100 || tId === window.myTeamId) continue; // 不吸隊友
