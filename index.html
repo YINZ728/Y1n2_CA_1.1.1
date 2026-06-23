@@ -8,8 +8,25 @@
     <script src="https://cdn.jsdelivr.net/npm/vue@2.6/dist/vue.min.js"></script>
     <script src="https://unpkg.com/element-ui@2.15.7/lib/index.js"></script>
     
-    <script>
-        // ==================== 覆寫系統預設彈窗，避免阻塞線程 ====================
+        <script>
+        // ==================== 覆寫系統預設彈窗，避免阻塞線程與卡鍵盤 ====================
+        // 建立一個強制奪取焦點再清除的機制
+        function forceClearFocus() {
+            if (document.activeElement) document.activeElement.blur();
+            window.blur();
+            let input = document.createElement('input');
+            input.setAttribute('type', 'text');
+            input.setAttribute('readonly', 'readonly');
+            input.style.position = 'absolute';
+            input.style.top = '-9999px';
+            document.body.appendChild(input);
+            input.focus();
+            setTimeout(() => {
+                input.blur();
+                document.body.removeChild(input);
+            }, 20);
+        }
+
         window.alert = function (message) {
             var iframe = document.createElement("IFRAME");
             iframe.style.display = "none";
@@ -17,7 +34,9 @@
             document.documentElement.appendChild(iframe);
             iframe.contentWindow.alert(message);
             iframe.parentNode.removeChild(iframe);
+            setTimeout(forceClearFocus, 50); // 彈窗結束後強制收起鍵盤
         };
+        
         window.confirm = function (message) {
             var iframe = document.createElement("IFRAME");
             iframe.style.display = "none";
@@ -25,8 +44,10 @@
             document.documentElement.appendChild(iframe);
             var result = iframe.contentWindow.confirm(message);
             iframe.parentNode.removeChild(iframe);
+            setTimeout(forceClearFocus, 50); // 彈窗結束後強制收起鍵盤
             return result;
         };
+        
         window.prompt = function (message, defaultText) {
             var iframe = document.createElement("IFRAME");
             iframe.style.display = "none";
@@ -34,9 +55,11 @@
             document.documentElement.appendChild(iframe);
             var result = iframe.contentWindow.prompt(message, defaultText);
             iframe.parentNode.removeChild(iframe);
+            setTimeout(forceClearFocus, 50); // 彈窗結束後強制收起鍵盤
             return result;
         };
     </script>
+
     
     <style>
         /* ==================== UI 介面樣式設定 ==================== */
@@ -257,9 +280,9 @@
                 </div>
 
                 <div v-show="tabValue==='two'">
-                                        <div class="aytext" style="margin-top: 10px;"><p>跟蹤瞬移(開發中)</p></div>
+                                        <div class="aytext" style="margin-top: 10px;"><p>瞬移功能</p></div>
                     <div class="btn-grid" style="grid-template-columns: 1fr;">
-                        <el-button onclick="standaloneTeleport()" style=" font-weight: bold; font-size: 14px;">單次瞬移 (瞬移到離準心最近的敵人)</el-button>
+                        <el-button onclick="standaloneTeleport()" style=" font-weight: bold; font-size: 14px;">單次瞬移(隨機)</el-button>
                     </div>
                     <hr>
 
@@ -339,12 +362,15 @@
                         <p>子彈追蹤 (請遵守括號內說明)</p>
                         <span style="color:#F56C6C; font-size: 12px; margin-bottom: 10px;">可聯絡作者購買房間爭霸功能(限台服)❗</span>
                     </div>
-                    
                     <div class="btn-grid-2">
                         <el-button onclick="dg()">怪物變傻(大廳)</el-button>
                         <el-button onclick="hell()">挑戰子追(人機)</el-button>
                         <el-button onclick="dszz()">降龍子追(人機)</el-button>
                         <el-button onclick="tc()">爭霸子追(人機)</el-button>
+                    </div>
+                    <div class="switch-row" style="margin-top: 10px; margin-bottom: 15px; border: 1px solid rgba(245, 108, 108, 0.5); padding: 8px; border-radius: 6px;">
+                        <span style="color: #F56C6C;">吸怪</span>
+                        <el-switch v-model="magnetEnabled" @change="toggleMagnet" active-color="#F56C6C" inactive-color="#25456D"></el-switch>
                     </div>
                 </div>
 
@@ -375,7 +401,7 @@
                     </div>
                     <el-collapse-transition>
                         <div v-show="showOption4" style="padding: 0 4px; font-size: 12px; line-height: 1.6;">
-                          <p>2026/6/23:新增瞬移(測試中)、修復繪製殘影、新增邊緣預警</p>
+                          <p>2026/6/23:新增瞬移.吸怪、修復繪製殘影、新增邊緣預警</p>
                           <p>2026/6/21:繪製寫法優化</p>
                           <p>2026/6/17:去除部分功能&新增繪製功能&UI更新</p>
                           <p>2026/4/25:白祥.景傳.虛傳無後</p>
@@ -773,9 +799,6 @@ function renderESP() {
     
     closeDraw(); // 🌟 每一幀一開始強制清空畫布，避免殘影
     
-    // ==================== 永久浮水印 (右上角) ====================
-    //drawText("Y1n2", window.sWidth - 40, 30, 14, '#00BFFF'); // 淺藍色
-    
     // 如果未開啟繪製，只需維持清空畫布與浮水印的迴圈
     if (!window.draw.state) {
         requestAnimationFrame(renderESP);
@@ -998,6 +1021,64 @@ function standaloneTeleport() {
     }, 20); // 耗時約 0.3 秒
 }
 
+// ==================== [全新功能] 萬象天引 (前方 25 米吸怪) ====================
+window.isMagnetActive = false;
+window.magnetWorker = null;
+
+function processMagnet() {
+    if (!window.isMagnetActive) return;
+    if (!window.myPosAddr || !window.myPlayerAddr) return; // 必須先獲取到自身座標
+
+    let myHP = readF32(window.myPlayerAddr + OFFSETS.CURRENT_HP);
+    if (myHP <= 0 || myHP > 100000) return; // 死亡狀態不執行
+
+    // 讀取自己當前座標
+    let myX = readF32(window.myPosAddr);
+    let myY = readF32(window.myPosAddr + 4);
+    let myZ = readF32(window.myPosAddr + 8);
+
+    // 取得視角矩陣來計算「正前方」
+    let m = getViewMatrix();
+    if (!m) return;
+
+    // m[3] 和 m[11] 代表了攝影機深度的 X 和 Z 投影方向 (Forward Vector)
+    let dx = m[3];
+    let dz = m[11];
+    let len = Math.sqrt(dx * dx + dz * dz);
+    if (len < 0.001) return;
+
+    // 計算前方 25 米的目標座標
+    let targetX = myX + 25 * (dx / len);
+    let targetY = myY + 0.5; // 高度稍微抬高 0.5，避免怪物卡進地板
+    let targetZ = myZ + 25 * (dz / len);
+
+    // 獲取玩家陣列
+    let sys = getPlayerSystem(); if (!sys) return;
+    let header = readPtr(sys + OFFSETS.ARRAY_HEADER_OFFSET1); if (!header) return;
+    header += OFFSETS.ARRAY_HEADER_OFFSET2;
+    let pc = readI32(sys + OFFSETS.PLAYER_COUNT_OFFSET);
+
+    // 遍歷並將所有敵人強拉過來
+    for (let i = 0; i < Math.max(pc, 24); i++) {
+        let pA = readPtr(header + (i * OFFSETS.PLAYER_STRIDE));
+        if (!pA || pA === window.myPlayerAddr) continue;
+
+        let cHP = readF32(pA + OFFSETS.CURRENT_HP);
+        if (cHP <= 0 || cHP > 100000) continue; // 不吸屍體
+
+        let tId = readI32(pA + OFFSETS.TEAM_ID);
+        if (tId <= 0 || tId >= 100 || tId === window.myTeamId) continue; // 不吸隊友
+
+        let posAddr = getPosAddr(pA);
+        if (posAddr) {
+            // 持續寫入座標，強制拘束敵人
+            h5gg.setValue(posAddr, targetX, "F32");
+            h5gg.setValue(posAddr + 4, targetY, "F32");
+            h5gg.setValue(posAddr + 8, targetZ, "F32");
+        }
+    }
+}
+
 // ==================== Vue 控制與初始化區域 ====================
 var app = new Vue({
     el: "#app",
@@ -1008,11 +1089,36 @@ var app = new Vue({
             showOption1: false, showOption2: false, showOption3: false, showOption4: false,
             showOption5: false, showOption6: false, showOption7: false, showOption8: false, 
             showOption9: false, showOption10: false,
-            draw: window.draw, zhiboMode: false, maxPlayers: 0
+            draw: window.draw, zhiboMode: false, maxPlayers: 0,
+            
+            magnetEnabled: false // 新增：綁定吸怪開關狀態
         }
     },
     mounted() { document.getElementById('app').style.display = 'block'; },
     methods: {
+        // 新增：處理開關變更
+        toggleMagnet(val) {
+            // 檢查是否已開啟繪製
+            if (val && !this.draw.state) {
+                alert("請先開啟繪製功能");
+                this.magnetEnabled = false; // 強制關閉開關
+                return;
+            }
+            
+            window.isMagnetActive = val;
+            if (val) {
+                if (!window.magnetWorker) {
+                    // 每 50 毫秒執行一次 (1秒20次)，壓制物理引擎的覆蓋
+                    window.magnetWorker = setInterval(processMagnet, 50); 
+                }
+            } else {
+                if (window.magnetWorker) {
+                    clearInterval(window.magnetWorker);
+                    window.magnetWorker = null;
+                }
+            }
+        },
+
         changeTab(tab) { this.tabValue = tab; },
         closeimgui() {
             var menu = document.querySelector("#app"); menu.style.display = 'none'; this.menuVisible = false;
@@ -1045,6 +1151,16 @@ var app = new Vue({
                         if (confirm("卡密正確！是否記憶卡密？")) localStorage.setItem('draw_auth_passed', 'true'); else localStorage.removeItem('draw_auth_passed');
                     } else {
                         if (pwd !== null && pwd !== "") alert("未授權或卡密錯誤！\n請聯繫作者。"); this.draw.state = false;
+                    }
+                }
+            } else {
+                // 修改：關閉繪製時，連帶關閉萬象天引
+                if (this.magnetEnabled) {
+                    this.magnetEnabled = false;
+                    window.isMagnetActive = false;
+                    if (window.magnetWorker) {
+                        clearInterval(window.magnetWorker);
+                        window.magnetWorker = null;
                     }
                 }
             }
