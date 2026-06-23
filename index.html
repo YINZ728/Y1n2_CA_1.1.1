@@ -983,9 +983,9 @@ function standaloneTeleport() {
     if (!finalTarget) { alert("場上沒有活著的敵人！"); return; }
 
     // 🚀 旁側站位計算：偏移 X 和 Z 軸 1 個單位，高度稍微離地 +2 防止卡地板
-    let tX = finalTarget.x + 1;
-    let tY = finalTarget.y + 2;
-    let tZ = finalTarget.z - 1;
+    let tX = finalTarget.x + 1.5;
+    let tY = finalTarget.y + 0.5;
+    let tZ = finalTarget.z - 1.5;
 
     // 🚀 連發寫入 (Burst Write)：連續寫入 15 次，強行壓制物理引擎覆蓋，解決按好幾次才過去的問題
     let ticks = 0;
