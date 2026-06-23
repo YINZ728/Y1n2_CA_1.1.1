@@ -2,7 +2,7 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <title>Y1n2 - Clean ESP Edition</title>
+    <title>Y1n2 - Integrated ESP & Teleport</title>
     <meta name="viewport" content="width=device-width,initial-scale=1.0,user-scalable=no">
     <link rel="stylesheet" href="https://unpkg.com/element-ui@2.15.7/lib/theme-chalk/index.css">
     <script src="https://cdn.jsdelivr.net/npm/vue@2.6/dist/vue.min.js"></script>
@@ -92,6 +92,13 @@
         .el-button { margin: 0 !important; width: 100%; font-size: 13px; padding: 8px 0; color: #FFF; background-color: #284A7A; border: none; border-radius: 4px; }
         .el-button:hover, .el-button:focus, .el-button:active { color: #FFF; background-color: #387ACA; }
         .aycollapse { padding: 8px 10px; width: 100%; font-size: 14px; background-color: #284A7A; border-radius: 6px; color: #FFF; margin-bottom: 8px; display: flex; align-items: center; font-weight: bold; }
+        
+        /* 絲滑微調按鈕樣式 */
+        .nudge-btn {
+            background-color: #387ACA; color: white; border: none; border-radius: 4px; font-size: 13px; font-weight: bold; height: 30px;
+        }
+        .nudge-btn:active { background-color: #E6A23C; }
+
         .resize-triangle {
             position: absolute; bottom: 0; right: 0; width: 0; height: 0;
             border-style: solid; border-width: 0 0 20px 20px; border-color: transparent transparent rgba(255, 255, 255, 0.3) transparent;
@@ -207,7 +214,7 @@
                             </div>
                         </div>
                     </el-collapse-transition>
-                 </div>
+                </div>
 
                 <div v-show="tabValue==='draw'">
                     <div class="aytext" style="text-align: center; margin-bottom: 15px;"><span style="color:#aaa;">Esp功能對設備性能要求較高</span></div>
@@ -231,15 +238,16 @@
                         </el-radio-group>
                     </div>
                     <hr>
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding: 0 4px;">
+                    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; padding: 0 4px;">
                         <el-checkbox v-model="draw.line">顯示射線</el-checkbox>
                         <el-checkbox v-model="draw.box">顯示方框</el-checkbox>
+                        <el-checkbox v-model="draw.dis">顯示距離</el-checkbox>
                         <el-checkbox v-model="draw.hp">顯示血條</el-checkbox>
                         <el-checkbox v-model="draw.team">顯示隊標</el-checkbox>
                         <el-checkbox v-model="draw.name">顯示名字</el-checkbox>
-                        <el-checkbox v-model="draw.dis">顯示距離</el-checkbox>
-                        <el-checkbox v-model="draw.filterTeam">屏蔽隊友</el-checkbox>
                         <el-checkbox v-model="draw.soloMode">Solo模式</el-checkbox>
+                        <el-checkbox v-model="draw.filterTeam">屏蔽隊友</el-checkbox>
+                        <el-checkbox v-model="draw.offScreen">邊緣預警</el-checkbox>
                     </div>
                     <hr>
                     <div style="padding: 0 4px; display: flex; justify-content: space-between; align-items: center; margin-top: 10px;">
@@ -249,9 +257,16 @@
                 </div>
 
                 <div v-show="tabValue==='two'">
+                                        <div class="aytext" style="margin-top: 10px;"><p>跟蹤瞬移(開發中)</p></div>
+                    <div class="btn-grid" style="grid-template-columns: 1fr;">
+                        <el-button onclick="standaloneTeleport()" style=" font-weight: bold; font-size: 14px;">單次瞬移 (瞬移到離準心最近的敵人)</el-button>
+                    </div>
+                    <hr>
+
                     <div class="aytext"><p>飛天遁地</p></div>
                     
                     <div class="aycollapse" @click="showOption6 = !showOption6" style="cursor:pointer">
+                                          
                         <i :class="showOption6?'el-icon-caret-bottom':'el-icon-caret-right'" style="margin-right:5px;"></i><span>男角座標</span>
                     </div>
                     <el-collapse-transition>
@@ -359,8 +374,8 @@
                         <i :class="showOption4?'el-icon-caret-bottom':'el-icon-caret-right'" style="margin-right:5px;"></i><span>更新日誌</span>
                     </div>
                     <el-collapse-transition>
-                        
-                      <div v-show="showOption4" style="padding: 0 4px; font-size: 12px; line-height: 1.6;">
+                        <div v-show="showOption4" style="padding: 0 4px; font-size: 12px; line-height: 1.6;">
+                          <p>2026/6/23:新增瞬移(測試中)、修復繪製殘影、新增邊緣預警</p>
                           <p>2026/6/21:繪製寫法優化</p>
                           <p>2026/6/17:去除部分功能&新增繪製功能&UI更新</p>
                           <p>2026/4/25:白祥.景傳.虛傳無後</p>
@@ -609,35 +624,54 @@ function xu(){ let name = prompt('無後1,微無後2'); if (name === '1') { h5gg
 function bjak(){ let name = prompt('無後1,微無後2'); if (name === '1') { h5gg.clearResults(); h5gg.searchNumber('403051~403053', 'I32', '0x00000000', '0x200000000'); h5gg.searchNearby('0.092~0.098', 'F32','0x100'); h5gg.searchNumber('0.092~0.098', 'F32', '0x00000000', '0x200000000'); h5gg.searchNearby('0.61~0.75', 'F32','0x100'); h5gg.searchNumber('0.61~0.75', 'F32', '0x00000000', '0x200000000'); h5gg.editAll('0', 'F32'); alert("白金ak無後");
 } else if (name === '2') { h5gg.clearResults(); h5gg.searchNumber('403051~403053', 'I32', '0x00000000', '0x200000000'); h5gg.searchNearby('0.092~0.098', 'F32','0x100'); h5gg.searchNumber('0.092~0.098', 'F32', '0x00000000', '0x200000000'); h5gg.searchNearby('0.61~0.75', 'F32','0x100'); h5gg.searchNumber('0.61~0.75', 'F32', '0x00000000', '0x200000000'); h5gg.editAll('0.18', 'F32'); alert("白金ak微無後"); } }
 
-// ==================== 7. [ESP 透視] 全域變數與偏移量 ====================
+// ==================== 7. [ESP 透視與瞬移] 全域變數與偏移量 ====================
 window.draw = { 
     slide: 60, state: false, line: true, box: true, hp: false, 
-    team: false, name: false, dis: true, filterTeam: true, soloMode: false, 
-    boxColor: '#FFA500', lineColor: '#FFA500', boxStyle: 'corner', boxWidth: 0.7
+    team: false, name: false, dis: true, filterTeam: true, soloMode: false, offScreen: true,
+    boxColor: '#FFA500', lineColor: '#FFA500', boxStyle: 'corner', boxWidth: 0.7,
+    teleportToEnemy: false 
 };
 window.sWidth = 0; window.sHeight = 0;
 window.iosScale = window.devicePixelRatio || 1;
 window.canvas = null; window.ctx = null;
 
 const OFFSETS = {
-    MATRIX_BASE: 0x3C591B8, MATRIX_OFFSET1: 0xB8, MATRIX_OFFSET2: 0x8, MATRIX_OFFSET3: 0x10, MATRIX_OFFSET4: 0x2E4,
-    PLAYER_SYSTEM_BASE: 0x3C2BA98, PLAYER_SYSTEM_OFFSET1: 0xB8, PLAYER_SYSTEM_OFFSET2: 0x48,
-    PLAYER_COUNT_OFFSET: 0x20, ARRAY_HEADER_OFFSET1: 0x18, ARRAY_HEADER_OFFSET2: 0x30,
-    PLAYER_STRIDE: 0x18, CURRENT_HP: 0x64, MAX_HP: 0x68, TEAM_ID: 0x2E4, NAME_PTR: 0x50, NAME_OFFSET: 0x14,
-    POS_OFFSET1: 0x2B0, POS_OFFSET2: 0x20, POS_OFFSET3: 0x18, POS_OFFSET4: 0x10, POS_OFFSET5: 0x38, POS_OFFSET6: 0x90,
+    MATRIX_BASE: 0x3C591B8,
+    MATRIX_OFFSET1: 0xB8,
+    MATRIX_OFFSET2: 0x8,
+    MATRIX_OFFSET3: 0x10,
+    MATRIX_OFFSET4: 0x2E4,
+    PLAYER_SYSTEM_BASE: 0x3C2BA98,
+    PLAYER_SYSTEM_OFFSET1: 0xB8,
+    PLAYER_SYSTEM_OFFSET2: 0x48,
+    PLAYER_COUNT_OFFSET: 0x20,
+    ARRAY_HEADER_OFFSET1: 0x18,
+    ARRAY_HEADER_OFFSET2: 0x30,
+    PLAYER_STRIDE: 0x18,
+    CURRENT_HP: 0x64, 
+    MAX_HP: 0x68, 
+    TEAM_ID: 0x2E4, 
+    NAME_PTR: 0x50, 
+    NAME_OFFSET: 0x14,
+    POS_OFFSET1: 0x2B0, 
+    POS_OFFSET2: 0x20, 
+    POS_OFFSET3: 0x18, 
+    POS_OFFSET4: 0x10, 
+    POS_OFFSET5: 0x38, 
+    POS_OFFSET6: 0x90,
 };
 
 let PlayerNameCache = new Map(), PlayerMaxHPCache = new Map();
 let lastRenderCacheUpdate = Date.now(), playerCacheUpdateInterval = 10000;
 let baseAddr = 0, lastFrameTime = 0, frameCount = 0, lastFpsUpdate = Date.now();
 
-// 共享快取 (ESP 使用)
+// 共享快取
 window.myPlayerAddr = null;
 window.myPosAddr = null;
 window.myTeamId = -1;
-let GlobalPlayerCache = [];
+let GlobalPlayerList = []; 
 
-// ==================== 8. 記憶體讀取工具函數 ====================
+// ==================== 8. 記憶體讀取與修改工具函數 ====================
 function readPtr(addr) { try { return Number(h5gg.getValue(addr, "U64")); } catch(e) { return 0; } }
 function readI32(addr) { try { return Number(h5gg.getValue(addr, "I32")); } catch(e) { return 0; } }
 function readF32(addr) { try { return Number(h5gg.getValue(addr, "F32")); } catch(e) { return 0; } }
@@ -687,7 +721,6 @@ function cleanupCache() {
     for(let [k, v] of PlayerMaxHPCache) if(n - v.timestamp > playerCacheUpdateInterval) PlayerMaxHPCache.delete(k); 
 }
 
-// 破解5層指標獲取座標位址
 function getPosAddr(pA) {
     let p1 = readPtr(pA + OFFSETS.POS_OFFSET1); if(!p1) return null;
     let p2 = readPtr(p1 + OFFSETS.POS_OFFSET2); if(!p2) return null;
@@ -697,69 +730,28 @@ function getPosAddr(pA) {
     return p5 + OFFSETS.POS_OFFSET6;
 }
 
-// ==================== [方案二：無狀態動態追蹤] 一號工人：資料採集 ====================
+// ==================== [一號工人] 僅負責收集基礎資料清單 ====================
 setInterval(function() {
     if(baseAddr === 0) { 
         try { let r = h5gg.getRangesList('UnityFramework'); if(r && r.length > 0) baseAddr = Number(r[0].start); } catch(e) {} return; 
     }
     
     let sys = getPlayerSystem();
-    if(!sys) return;
+    if(!sys) { GlobalPlayerList = []; return; } // 當不在局內時清空列表，不再盲目繪製
     
     let pc = readI32(sys + OFFSETS.PLAYER_COUNT_OFFSET);
     if(window.app) window.app.maxPlayers = pc;
     
     let header = readPtr(sys + OFFSETS.ARRAY_HEADER_OFFSET1);
-    if(!header) return;
+    if(!header) { GlobalPlayerList = []; return; } // 同理
     header += OFFSETS.ARRAY_HEADER_OFFSET2;
     
-    let tempPlayers = [];
-    let m = getViewMatrix();
-    
-    // 每次重新計算，不鎖死
-    window.myPlayerAddr = null;
-    window.myPosAddr = null;
-    window.myTeamId = -1;
-
-    let minW = 9999;
-    let localPlayerIndex = -1;
-
+    let newList = [];
     for(let i=0; i < Math.max(pc, 24); i++) {
         let pA = readPtr(header + (i * OFFSETS.PLAYER_STRIDE));
-        if(!pA) continue;
-        
-        let posAddr = getPosAddr(pA);
-        if(!posAddr) continue;
-
-        let tId = readI32(pA + OFFSETS.TEAM_ID);
-        tempPlayers.push({ pA: pA, posAddr: posAddr, teamId: tId });
-
-        // 計算誰距離攝影機最近
-        if (m) {
-            let px = readF32(posAddr), py = readF32(posAddr+4), pz = readF32(posAddr+8);
-            let w = m[3]*px + m[7]*py + m[11]*pz + m[15];
-            
-            // w > 0 且小於 4.0 通常是本地玩家或觀戰對象
-            if (w > 0 && w < 4.0 && w < minW) {
-                minW = w;
-                localPlayerIndex = tempPlayers.length - 1;
-            }
-        }
+        if(pA) newList.push(pA);
     }
-    
-    let newCache = [];
-    for (let i = 0; i < tempPlayers.length; i++) {
-        if (i === localPlayerIndex) {
-            // 找到主角 (自己或觀戰對象)，設定為當前陣營
-            window.myPlayerAddr = tempPlayers[i].pA;
-            window.myPosAddr = tempPlayers[i].posAddr;
-            window.myTeamId = tempPlayers[i].teamId;
-        } else {
-            newCache.push(tempPlayers[i]);
-        }
-    }
-
-    GlobalPlayerCache = newCache;
+    GlobalPlayerList = newList;
     cleanupCache();
 }, 500);
 
@@ -769,61 +761,241 @@ const drawLine = (x1, y1, x2, y2, color, thickness = 0.7) => { x1 *= window.iosS
 const drawRect = (x, y, w, h, color, isFill = true, lineWidth = 0.7) => { x *= window.iosScale; y *= window.iosScale; w *= window.iosScale; h *= window.iosScale; window.ctx.beginPath(); window.ctx.lineWidth = window.iosScale * lineWidth; window.ctx.strokeStyle = color; window.ctx.fillStyle = color; if(isFill) window.ctx.fillRect(x, y, w, h); else window.ctx.strokeRect(x, y, w, h); }
 const drawText = (text, x, y, size, color, isFill = true) => { x *= window.iosScale; y *= window.iosScale; size *= window.iosScale; window.ctx.save(); window.ctx.textAlign = "center"; window.ctx.textBaseline = "middle"; window.ctx.fillStyle = color; window.ctx.font = `bold ${size}px Arial`; window.ctx.shadowColor = "rgba(0,0,0,0.7)"; window.ctx.shadowBlur = size * 0.3; if(isFill) window.ctx.fillText(text, x, y); window.ctx.restore(); }
 const drawCornerBox = (x, y, w, h, color, thickness = 0.7) => { const lW = w * 0.2, lH = h * 0.2; drawLine(x, y, x + lW, y, color, thickness); drawLine(x, y, x, y + lH, color, thickness); drawLine(x + w - lW, y, x + w, y, color, thickness); drawLine(x + w, y, x + w, y + lH, color, thickness); drawLine(x, y + h, x + lW, y + h, color, thickness); drawLine(x, y + h - lH, x, y + h, color, thickness); drawLine(x + w - lW, y + h, x + w, y + h, color, thickness); drawLine(x + w, y + h - lH, x + w, y + h, color, thickness); }
+const drawCircle = (x, y, radius, color, isFill = true) => { x *= window.iosScale; y *= window.iosScale; radius *= window.iosScale; window.ctx.beginPath(); window.ctx.arc(x, y, radius, 0, 2 * Math.PI, false); if(isFill) { window.ctx.fillStyle = color; window.ctx.fill(); } else { window.ctx.lineWidth = window.iosScale * 1; window.ctx.strokeStyle = color; window.ctx.stroke(); } }
 function worldToScreen(pos, m) { const x = m[0]*pos.x + m[4]*pos.y + m[8]*pos.z + m[12], y = m[1]*pos.x + m[5]*pos.y + m[9]*pos.z + m[13]; const w = m[3]*pos.x + m[7]*pos.y + m[11]*pos.z + m[15]; if(w < 0.01) return null; const iW = 1.0 / w; return { x: (x * iW * 0.5 + 0.5) * window.sWidth, y: (0.5 - y * iW * 0.5) * window.sHeight, dist: w }; }
 const drawPlayerInfo = (x, y, w, h, dist, teamId, currentHP, maxHP, name, weapon, isAI, isTeammate) => { let color = isTeammate ? '#00BFFF' : (isAI ? 'white' : '#FFA500'); let boxColor = isTeammate ? '#00BFFF' : window.draw.boxColor; if(window.draw.line) drawLine(window.sWidth / 2, 0, x, y - 15, color, 0.8); if(x < -50 || y < -50 || x > window.sWidth + 50 || y > window.sHeight + 50) { let tx = Math.max(20, Math.min(window.sWidth - 20, x)), ty = Math.max(20, y / 2); let outText = ""; if(window.draw.team) outText += `[${teamId}] `; if(window.draw.dis) outText += `${dist}m`; if(outText !== "") drawText(outText.trim(), tx, ty, 12, color); return; } let topText = ""; if(window.draw.team) topText += `[${teamId}] `; if(window.draw.dis) topText += `${dist}m`; if(topText !== "") drawText(topText.trim(), x, y - 20, 7, "white"); if(window.draw.hp && maxHP > 0) { const hpP = Math.max(0, Math.min(100, (currentHP / maxHP) * 100)), hpFH = Math.ceil((hpP / 100) * h); let hpC = hpP >= 70 ? '#00FF00' : (hpP >= 30 ? '#FFFF00' : '#FF0000'); drawRect(x - w/2 - 4, y, 2, h, 'rgba(0,0,0,0.5)', true); drawRect(x - w/2 - 4, y + (h - hpFH), 2, hpFH, hpC, true); } if(window.draw.box) { if(window.draw.boxStyle === 'corner') drawCornerBox(x - w/2, y, w, h, boxColor, 0.8); else drawRect(x - w/2, y, w, h, boxColor, false, 0.5); } if(window.draw.name) drawText(name.length > 8 ? name.slice(0, 6) + '...' : name, x, y - 10, 8, color); }
 
-// ⚡ 二號工人：極速繪製渲染
+// ⚡ 二號工人：極速繪製渲染與精準攝影機判定 (永久執行迴圈)
 function renderESP() { 
-    if (!window.draw.state) return;
-    
     let now = Date.now(); 
     if(now - lastFrameTime < (1000 / window.draw.slide) - 3) { requestAnimationFrame(renderESP); return; }
     lastFrameTime = now; 
     
+    closeDraw(); // 🌟 每一幀一開始強制清空畫布，避免殘影
+    
+    // ==================== 永久浮水印 (右上角) ====================
+    //drawText("Y1n2", window.sWidth - 40, 30, 14, '#00BFFF'); // 淺藍色
+    
+    // 如果未開啟繪製，只需維持清空畫布與浮水印的迴圈
+    if (!window.draw.state) {
+        requestAnimationFrame(renderESP);
+        return;
+    }
+
     frameCount++; 
     if(now - lastFpsUpdate >= 1000) { window.fps = frameCount; frameCount = 0; lastFpsUpdate = now; } 
     
-    if(baseAddr === 0) { closeDraw(); drawText("獲取基址失敗...", window.sWidth/2, window.sHeight/2, 20, '#F00'); requestAnimationFrame(renderESP); return; } 
+    // 🌟 提前繪製 FPS，確保只要「開啟繪製」狀態，無論是否在對局內都會顯示
+    if(window.fps) drawText(`FPS: ${window.fps}`, 50, 30, 14, '#4caf50'); 
+    
+    let countY = window.sHeight * 0.11; // 統一設定 Count 的 Y 軸高度
+
+    if(baseAddr === 0) { 
+        drawText("獲取基址失敗...", window.sWidth/2, window.sHeight/2, 20, '#F00'); 
+        // 尚未獲取基址時，也預先顯示 Count: 0
+        drawText("Count:0", window.sWidth / 2, countY, 17, "#00BFFF", true); 
+        requestAnimationFrame(renderESP); 
+        return; 
+    } 
     
     let m = getViewMatrix();
-    let eC = 0; 
-    let renderList = [];
+    if (!m) { 
+        // 獲取不到矩陣（大廳狀態/未進對局）時，也預先顯示 Count: 0
+        drawText("Count:0", window.sWidth / 2, countY, 17, "#00BFFF", true); 
+        requestAnimationFrame(renderESP); 
+        return; 
+    }
 
-    if (m && GlobalPlayerCache.length > 0) {
-        for (let e of GlobalPlayerCache) {
-            if (e.pA === window.myPlayerAddr) continue; // 不畫自己
+    let alivePlayers = [];
+    let minCamDist = 999999;
+    let currentLocalTeamId = -1;
+    let currentLocalPosAddr = null;
+    let currentLocalAddr = null;
 
-            let cHP = readF32(e.pA + OFFSETS.CURRENT_HP);
-            if (cHP <= 0 || cHP > 100000) continue;
-            
-            let isTeammate = window.draw.soloMode ? false : (e.teamId === window.myTeamId);
-            if (window.draw.filterTeam && isTeammate) continue;
+    // 1. 動態計算每一位玩家距離攝影機原點的絕對三維距離
+    for (let pA of GlobalPlayerList) {
+        let cHP = readF32(pA + OFFSETS.CURRENT_HP);
+        if (cHP <= 0 || cHP > 100000) continue;
 
-            let x = readF32(e.posAddr), y = readF32(e.posAddr + 4), z = readF32(e.posAddr + 8);
-            if (!isTeammate) eC++;
-            
-            let rB = worldToScreen({ x: x, y: y - 0.1, z: z }, m); 
-            let rT = worldToScreen({ x: x, y: y + 1.5, z: z }, m); 
-            if (!rB || !rT) continue; 
-            
-            let h = rB.y - rT.y; 
-            let w = h / 2; 
-            let dist = rB.dist; 
-            if (dist > 500 || h < 2 || h > 2000) continue; 
-            
-            renderList.push({ x: rT.x, y: rT.y, w: w, h: h, dist: Math.round(dist), teamId: e.teamId, name: getPlayerName(e.pA), cHP: cHP, maxHP: getMaxHP(e.pA), isTeammate: isTeammate });
+        let posAddr = getPosAddr(pA);
+        if (!posAddr) continue;
+
+        let tId = readI32(pA + OFFSETS.TEAM_ID);
+        let px = readF32(posAddr), py = readF32(posAddr + 4), pz = readF32(posAddr + 8);
+
+        let headY = py + 1.5; 
+        let camX = m[0]*px + m[4]*headY + m[8]*pz + m[12];
+        let camY = m[1]*px + m[5]*headY + m[9]*pz + m[13];
+        let camZ = m[2]*px + m[6]*headY + m[10]*pz + m[14];
+        let camDist = Math.sqrt(camX*camX + camY*camY + camZ*camZ);
+
+        if (camDist < minCamDist) {
+            minCamDist = camDist;
+            currentLocalTeamId = tId;
+            currentLocalPosAddr = posAddr;
+            currentLocalAddr = pA;
         }
+
+        alivePlayers.push({ pA: pA, posAddr: posAddr, teamId: tId, px: px, py: py, pz: pz, cHP: cHP });
+    }
+
+    if (currentLocalTeamId !== -1) {
+        window.myTeamId = currentLocalTeamId;
+        window.myPosAddr = currentLocalPosAddr;
+        window.myPlayerAddr = currentLocalAddr;
+    }
+
+    let eC = 0; 
+
+    // 2. 進行繪製
+    for (let p of alivePlayers) {
+        if (p.pA === window.myPlayerAddr) continue;
+
+        let isTeammate = window.draw.soloMode ? false : (p.teamId === window.myTeamId);
+        if (window.draw.filterTeam && isTeammate) continue;
+
+        if (!isTeammate) eC++;
+
+        // ==================== 邊緣預警邏輯開始 ====================
+        let cx = m[0]*p.px + m[4]*p.py + m[8]*p.pz + m[12];
+        let cy = m[1]*p.px + m[5]*p.py + m[9]*p.pz + m[13];
+        let cw = m[3]*p.px + m[7]*p.py + m[11]*p.pz + m[15];
+
+        let isBehind = cw < 0.01; // 判斷是否在背後
+        let iW = 1.0 / Math.abs(cw || 0.0001); 
+        let screenX = (cx * iW * 0.5 + 0.5) * window.sWidth;
+        let screenY = (0.5 - cy * iW * 0.5) * window.sHeight;
+
+        // 如果在背後，反轉向量將其投影至前方視角範圍
+        if (isBehind) {
+            screenX = window.sWidth - screenX;
+            screenY = window.sHeight - screenY;
+        }
+
+        // 當開啟預警、目標非隊友，且超出螢幕邊界或在背後時觸發
+        if (window.draw.offScreen && !isTeammate && (isBehind || screenX < 0 || screenX > window.sWidth || screenY < 0 || screenY > window.sHeight)) {
+            let cntX = window.sWidth / 2;
+            let cntY = window.sHeight / 2;
+            let dx = screenX - cntX;
+            let dy = screenY - cntY;
+            let angle = Math.atan2(dy, dx);
+            
+            let margin = 35; // 預警點距離螢幕邊緣的防遮擋像素
+            let mX = cntX - margin;
+            let mY = cntY - margin;
+            
+            let edgeX, edgeY;
+            // 計算射線與螢幕矩形邊界的交點
+            if (Math.abs(dx / mX) > Math.abs(dy / mY)) {
+                edgeX = dx > 0 ? cntX + mX : cntX - mX;
+                edgeY = cntY + (edgeX - cntX) * Math.tan(angle);
+            } else {
+                edgeY = dy > 0 ? cntY + mY : cntY - mY;
+                edgeX = cntX + (edgeY - cntY) / Math.tan(angle);
+            }
+            
+            // 結合原本的距離文字邏輯
+            let outText = "";
+            if(window.draw.team) outText += `[${p.teamId}] `;
+            if(window.draw.dis) outText += `${Math.round(Math.abs(cw))}m`;
+
+            drawCircle(edgeX, edgeY, 4, 'rgba(255, 0, 0, 0.8)', true); 
+            if(outText !== "") {
+                drawText(outText.trim(), edgeX, edgeY + 14, 11, '#FFA500'); 
+            }
+            
+            continue; 
+        }
+        // ==================== 邊緣預警邏輯結束 ====================
+
+        let rB = worldToScreen({ x: p.px, y: p.py - 0.1, z: p.pz }, m); 
+        let rT = worldToScreen({ x: p.px, y: p.py + 1.5, z: p.pz }, m); 
+        if (!rB || !rT) continue; 
+        
+        let h = rB.y - rT.y; 
+        let w = h / 2; 
+        let dist = rB.dist; 
+        if (dist > 500 || h < 2 || h > 2000) continue; 
+        
+        drawPlayerInfo(rT.x, rT.y, w, h, Math.round(dist), p.teamId, p.cHP, getMaxHP(p.pA), getPlayerName(p.pA), "", false, isTeammate);
     }
     
-    closeDraw(); 
-    for (let d of renderList) { drawPlayerInfo(d.x, d.y, d.w, d.h, d.dist, d.teamId, d.cHP, d.maxHP, d.name, "", false, d.isTeammate); }
-    
-    if(window.fps) drawText(`FPS: ${window.fps}`, 50, 30, 14, '#4caf50'); 
-    let countY = window.sHeight * 0.11; 
+    // 🌟 原本底部的 FPS 已經被移到上面了，這裡只負責在對局內時繪製動態敵人數量
     if(eC === 0) drawText("Count:0", window.sWidth / 2, countY, 17, "#00BFFF", true); 
     else drawText(`Count:${eC}`, window.sWidth / 2, countY, 17, "red", true); 
 
     requestAnimationFrame(renderESP);
+}
+
+
+// ==================== [全新功能] 單次戰術背刺瞬移 ====================
+function standaloneTeleport() {
+    if (!window.draw.state) { alert("請先開啟繪製功能"); return; }
+    if (!window.myPosAddr || !window.myPlayerAddr) { alert("尚未鎖定自身座標！請稍微移動視角。"); return; }
+    
+    let myHP = readF32(window.myPlayerAddr + OFFSETS.CURRENT_HP);
+    if (myHP <= 0 || myHP > 100000) { alert("死亡狀態下無法使用瞬移！"); return; }
+
+    let sys = getPlayerSystem(); if(!sys) return;
+    let header = readPtr(sys + OFFSETS.ARRAY_HEADER_OFFSET1); if(!header) return;
+    header += OFFSETS.ARRAY_HEADER_OFFSET2;
+    let pc = readI32(sys + OFFSETS.PLAYER_COUNT_OFFSET);
+
+    let m = getViewMatrix();
+    let centerX = window.sWidth / 2;
+    let centerY = window.sHeight / 2;
+    
+    let targetEnemy = null;
+    let minScreenDist = 999999;
+    let fallbackEnemy = null; 
+
+    for (let i = 0; i < Math.max(pc, 24); i++) {
+        let pA = readPtr(header + (i * OFFSETS.PLAYER_STRIDE));
+        if (!pA || pA === window.myPlayerAddr) continue;
+        
+        let cHP = readF32(pA + OFFSETS.CURRENT_HP);
+        if (cHP <= 0 || cHP > 100000) continue; 
+        
+        let tId = readI32(pA + OFFSETS.TEAM_ID);
+        if (tId <= 0 || tId >= 100 || tId === window.myTeamId) continue; 
+        
+        let posAddr = getPosAddr(pA);
+        if(posAddr) {
+            let eX = readF32(posAddr), eY = readF32(posAddr + 4), eZ = readF32(posAddr + 8);
+            if (eX === 0 && eZ === 0) continue;
+
+            fallbackEnemy = {x: eX, y: eY, z: eZ}; 
+            
+            if (m) {
+                let sc = worldToScreen({ x: eX, y: eY, z: eZ }, m);
+                if (sc) {
+                    let dist = Math.sqrt(Math.pow(sc.x - centerX, 2) + Math.pow(sc.y - centerY, 2));
+                    if (dist < minScreenDist) {
+                        minScreenDist = dist;
+                        targetEnemy = {x: eX, y: eY, z: eZ};
+                    }
+                }
+            }
+        }
+    }
+
+    let finalTarget = targetEnemy || fallbackEnemy;
+    if (!finalTarget) { alert("場上沒有活著的敵人！"); return; }
+
+    // 🚀 旁側站位計算：偏移 X 和 Z 軸 1 個單位，高度稍微離地 +2 防止卡地板
+    let tX = finalTarget.x + 1;
+    let tY = finalTarget.y + 2;
+    let tZ = finalTarget.z - 1;
+
+    // 🚀 連發寫入 (Burst Write)：連續寫入 15 次，強行壓制物理引擎覆蓋，解決按好幾次才過去的問題
+    let ticks = 0;
+    let burstInterval = setInterval(() => {
+        if(ticks > 15) { clearInterval(burstInterval); return; }
+        h5gg.setValue(window.myPosAddr, tX, "F32");
+        h5gg.setValue(window.myPosAddr + 4, tY, "F32"); 
+        h5gg.setValue(window.myPosAddr + 8, tZ, "F32");
+        ticks++;
+    }, 20); // 耗時約 0.3 秒
 }
 
 // ==================== Vue 控制與初始化區域 ====================
@@ -864,17 +1036,18 @@ var app = new Vue({
         },
         toggleDraw(isDrawing) {
             if (isDrawing) {
-                if (localStorage.getItem('draw_auth_passed') === 'true') { lastFrameTime = Date.now(); requestAnimationFrame(renderESP); } 
+                if (localStorage.getItem('draw_auth_passed') === 'true') {
+                    // 卡密已驗證，直接啟動 (因為我們已將 renderESP 設為永久執行，因此不需再次 requestAnimationFrame)
+                } 
                 else {
                     let pwd = prompt("請輸入繪製卡密：", ""); const validPasswords = ["iovecxin", "iovecxin1"];
                     if (validPasswords.includes(pwd)) {
                         if (confirm("卡密正確！是否記憶卡密？")) localStorage.setItem('draw_auth_passed', 'true'); else localStorage.removeItem('draw_auth_passed');
-                        lastFrameTime = Date.now(); requestAnimationFrame(renderESP); 
                     } else {
                         if (pwd !== null && pwd !== "") alert("未授權或卡密錯誤！\n請聯繫作者。"); this.draw.state = false;
                     }
                 }
-            } else closeDraw();
+            }
         },
         titleTouchStart(event) {
             const touch = event.touches[0]; this.touchStartX = Math.round(touch.clientX); this.touchStartY = Math.round(touch.clientY);
@@ -925,6 +1098,9 @@ const layout = function () {
     }
 }
 layout(); window.addEventListener("orientationchange", layout, false);
+
+// 🚀 在這裡觸發首次迴圈啟動，確保即時與永久渲染！
+requestAnimationFrame(renderESP);
 
 </script>
 </body>
