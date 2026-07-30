@@ -270,7 +270,7 @@
                         <el-checkbox v-model="draw.name">顯示名字</el-checkbox>
                         <el-checkbox v-model="draw.soloMode">Solo模式</el-checkbox>
                         <el-checkbox v-model="draw.filterTeam">屏蔽隊友</el-checkbox>
-                        <el-checkbox v-model="draw.offScreen">邊緣預警</el-checkbox>
+                        <el-checkbox v-model="draw.offScreen">背敵預警</el-checkbox>
                     </div>
                     <hr>
                     <div style="padding: 0 4px; display: flex; justify-content: space-between; align-items: center; margin-top: 10px;">
@@ -401,6 +401,7 @@
                     </div>
                     <el-collapse-transition>
                         <div v-show="showOption4" style="padding: 0 4px; font-size: 12px; line-height: 1.6;">
+                          <p>2026/7/28:優化繪製血條.背敵顯示</p>
                           <p>2026/6/23:新增瞬移.吸怪、修復繪製殘影、新增邊緣預警</p>
                           <p>2026/6/21:繪製寫法優化</p>
                           <p>2026/6/17:去除部分功能&新增繪製功能&UI更新</p>
@@ -789,7 +790,49 @@ const drawText = (text, x, y, size, color, isFill = true) => { x *= window.iosSc
 const drawCornerBox = (x, y, w, h, color, thickness = 0.7) => { const lW = w * 0.2, lH = h * 0.2; drawLine(x, y, x + lW, y, color, thickness); drawLine(x, y, x, y + lH, color, thickness); drawLine(x + w - lW, y, x + w, y, color, thickness); drawLine(x + w, y, x + w, y + lH, color, thickness); drawLine(x, y + h, x + lW, y + h, color, thickness); drawLine(x, y + h - lH, x, y + h, color, thickness); drawLine(x + w - lW, y + h, x + w, y + h, color, thickness); drawLine(x + w, y + h - lH, x + w, y + h, color, thickness); }
 const drawCircle = (x, y, radius, color, isFill = true) => { x *= window.iosScale; y *= window.iosScale; radius *= window.iosScale; window.ctx.beginPath(); window.ctx.arc(x, y, radius, 0, 2 * Math.PI, false); if(isFill) { window.ctx.fillStyle = color; window.ctx.fill(); } else { window.ctx.lineWidth = window.iosScale * 1; window.ctx.strokeStyle = color; window.ctx.stroke(); } }
 function worldToScreen(pos, m) { const x = m[0]*pos.x + m[4]*pos.y + m[8]*pos.z + m[12], y = m[1]*pos.x + m[5]*pos.y + m[9]*pos.z + m[13]; const w = m[3]*pos.x + m[7]*pos.y + m[11]*pos.z + m[15]; if(w < 0.01) return null; const iW = 1.0 / w; return { x: (x * iW * 0.5 + 0.5) * window.sWidth, y: (0.5 - y * iW * 0.5) * window.sHeight, dist: w }; }
-const drawPlayerInfo = (x, y, w, h, dist, teamId, currentHP, maxHP, name, weapon, isAI, isTeammate) => { let color = isTeammate ? '#00BFFF' : (isAI ? 'white' : '#FFA500'); let boxColor = isTeammate ? '#00BFFF' : window.draw.boxColor; if(window.draw.line) drawLine(window.sWidth / 2, 0, x, y - 15, color, 0.8); if(x < -50 || y < -50 || x > window.sWidth + 50 || y > window.sHeight + 50) { let tx = Math.max(20, Math.min(window.sWidth - 20, x)), ty = Math.max(20, y / 2); let outText = ""; if(window.draw.team) outText += `[${teamId}] `; if(window.draw.dis) outText += `${dist}m`; if(outText !== "") drawText(outText.trim(), tx, ty, 12, color); return; } let topText = ""; if(window.draw.team) topText += `[${teamId}] `; if(window.draw.dis) topText += `${dist}m`; if(topText !== "") drawText(topText.trim(), x, y - 20, 7, "white"); if(window.draw.hp && maxHP > 0) { const hpP = Math.max(0, Math.min(100, (currentHP / maxHP) * 100)), hpFH = Math.ceil((hpP / 100) * h); let hpC = hpP >= 70 ? '#00FF00' : (hpP >= 30 ? '#FFFF00' : '#FF0000'); drawRect(x - w/2 - 4, y, 2, h, 'rgba(0,0,0,0.5)', true); drawRect(x - w/2 - 4, y + (h - hpFH), 2, hpFH, hpC, true); } if(window.draw.box) { if(window.draw.boxStyle === 'corner') drawCornerBox(x - w/2, y, w, h, boxColor, 0.8); else drawRect(x - w/2, y, w, h, boxColor, false, 0.5); } if(window.draw.name) drawText(name.length > 8 ? name.slice(0, 6) + '...' : name, x, y - 10, 8, color); }
+const drawPlayerInfo = (x, y, w, h, dist, teamId, currentHP, maxHP, name, weapon, isAI, isTeammate) => { 
+    let color = isTeammate ? '#00BFFF' : (isAI ? 'white' : '#FFA500'); 
+    let boxColor = isTeammate ? '#00BFFF' : window.draw.boxColor; 
+    
+    if(window.draw.line) drawLine(window.sWidth / 2, 0, x, y - 15, color, 0.8); 
+    
+    if(x < -50 || y < -50 || x > window.sWidth + 50 || y > window.sHeight + 50) { 
+        let tx = Math.max(20, Math.min(window.sWidth - 20, x)), ty = Math.max(20, y / 2); 
+        let outText = ""; 
+        if(window.draw.team) outText += `[${teamId}] `; 
+        if(window.draw.dis) outText += `${dist}m`; 
+        if(outText !== "") drawText(outText.trim(), tx, ty, 12, color); 
+        return; 
+    } 
+    
+    let topText = ""; 
+    if(window.draw.team) topText += `[${teamId}] `; 
+    if(window.draw.dis) topText += `${dist}m`; 
+    if(topText !== "") drawText(topText.trim(), x, y - 20, 7, "white"); 
+    
+    // ======== 修改的血條邏輯開始 ========
+    if(window.draw.hp && maxHP > 0) { 
+        // 計算血量百分比
+        const hpP = Math.max(0, Math.min(100, (currentHP / maxHP) * 100));
+        // 根據方框寬度 (w) 計算血條實際寬度
+        const hpFW = Math.ceil((hpP / 100) * w); 
+        // 判斷血量顏色
+        let hpC = hpP >= 70 ? '#00FF00' : (hpP >= 30 ? '#FFFF00' : '#FF0000'); 
+        
+        // 繪製血條背景（在方框底部往下偏移 3 像素，高度設為 3）
+        drawRect(x - w/2, y + h + 3, w, 3, 'rgba(0,0,0,0.5)', true); 
+        // 繪製當前血量
+        drawRect(x - w/2, y + h + 3, hpFW, 3, hpC, true); 
+    } 
+    // ======== 修改的血條邏輯結束 ========
+
+    if(window.draw.box) { 
+        if(window.draw.boxStyle === 'corner') drawCornerBox(x - w/2, y, w, h, boxColor, 0.8); 
+        else drawRect(x - w/2, y, w, h, boxColor, false, 0.5); 
+    } 
+    
+    if(window.draw.name) drawText(name.length > 8 ? name.slice(0, 6) + '...' : name, x, y - 10, 8, color); 
+}
 
 // ⚡ 二號工人：極速繪製渲染與精準攝影機判定 (永久執行迴圈)
 function renderESP() { 
@@ -859,13 +902,22 @@ function renderESP() {
             currentLocalAddr = pA;
         }
 
-        alivePlayers.push({ pA: pA, posAddr: posAddr, teamId: tId, px: px, py: py, pz: pz, cHP: cHP });
+        alivePlayers.push({ pA: pA, posAddr: posAddr, teamId: tId, px: px, py: py, pz: pz, cHP: cHP , dist: camDist});
     }
-
     if (currentLocalTeamId !== -1) {
         window.myTeamId = currentLocalTeamId;
         window.myPosAddr = currentLocalPosAddr;
         window.myPlayerAddr = currentLocalAddr;
+    }
+
+    // ====== 新增：在每一幀繪製前，只讀取一次你的最新 3D 坐標，效能極佳 ======
+    let myX = 0, myY = 0, myZ = 0;
+    let hasMyPos = false;
+    if (window.myPosAddr) {
+        myX = readF32(window.myPosAddr);
+        myY = readF32(window.myPosAddr + 4);
+        myZ = readF32(window.myPosAddr + 8);
+        hasMyPos = true;
     }
 
     let eC = 0; 
@@ -879,52 +931,60 @@ function renderESP() {
 
         if (!isTeammate) eC++;
 
-        // ==================== 邊緣預警邏輯開始 ====================
+        // 計算矩陣投影
         let cx = m[0]*p.px + m[4]*p.py + m[8]*p.pz + m[12];
         let cy = m[1]*p.px + m[5]*p.py + m[9]*p.pz + m[13];
         let cw = m[3]*p.px + m[7]*p.py + m[11]*p.pz + m[15];
 
-        let isBehind = cw < 0.01; // 判斷是否在背後
+        // ====== 新增：精準的三維空間直線距離計算 ======
+        let realDist = Math.abs(cw || 0.0001); // 預設容錯值
+        if (hasMyPos) {
+            // 使用勾股定理計算真實絕對距離，完全不受視角旋轉與螢幕邊緣拉伸影響
+            realDist = Math.sqrt(Math.pow(p.px - myX, 2) + Math.pow(p.py - myY, 2) + Math.pow(p.pz - myZ, 2));
+        }
+
+        // ==================== 邊緣預警邏輯開始 ====================
+        let isBehind = cw < 0.01; 
         let iW = 1.0 / Math.abs(cw || 0.0001); 
         let screenX = (cx * iW * 0.5 + 0.5) * window.sWidth;
         let screenY = (0.5 - cy * iW * 0.5) * window.sHeight;
 
-        // 如果在背後，反轉向量將其投影至前方視角範圍
-        if (isBehind) {
-            screenX = window.sWidth - screenX;
-            screenY = window.sHeight - screenY;
-        }
-
-        // 當開啟預警、目標非隊友，且超出螢幕邊界或在背後時觸發
         if (window.draw.offScreen && !isTeammate && (isBehind || screenX < 0 || screenX > window.sWidth || screenY < 0 || screenY > window.sHeight)) {
             let cntX = window.sWidth / 2;
             let cntY = window.sHeight / 2;
-            let dx = screenX - cntX;
-            let dy = screenY - cntY;
-            let angle = Math.atan2(dy, dx);
+            let angle;
             
-            let margin = 35; // 預警點距離螢幕邊緣的防遮擋像素
-            let mX = cntX - margin;
-            let mY = cntY - margin;
-            
-            let edgeX, edgeY;
-            // 計算射線與螢幕矩形邊界的交點
-            if (Math.abs(dx / mX) > Math.abs(dy / mY)) {
-                edgeX = dx > 0 ? cntX + mX : cntX - mX;
-                edgeY = cntY + (edgeX - cntX) * Math.tan(angle);
+            if (isBehind) {
+                angle = Math.atan2(Math.abs(cw), cx);
             } else {
-                edgeY = dy > 0 ? cntY + mY : cntY - mY;
-                edgeX = cntX + (edgeY - cntY) / Math.tan(angle);
+                angle = Math.atan2(screenY - cntY, screenX - cntX);
             }
             
-            // 結合原本的距離文字邏輯
+            let radius = 120; 
+            let arrowX = cntX + radius * Math.cos(angle);
+            let arrowY = cntY + radius * Math.sin(angle);
+            
+            window.ctx.save();
+            window.ctx.translate(arrowX * window.iosScale, arrowY * window.iosScale);
+            window.ctx.rotate(angle);
+            window.ctx.beginPath();
+            window.ctx.moveTo(10 * window.iosScale, 0); 
+            window.ctx.lineTo(-8 * window.iosScale, -7 * window.iosScale); 
+            window.ctx.lineTo(-4 * window.iosScale, 0); 
+            window.ctx.lineTo(-8 * window.iosScale, 7 * window.iosScale); 
+            window.ctx.closePath();
+            window.ctx.fillStyle = 'rgba(255, 30, 30, 0.9)'; 
+            window.ctx.fill();
+            window.ctx.restore();
+            
             let outText = "";
             if(window.draw.team) outText += `[${p.teamId}] `;
-            if(window.draw.dis) outText += `${Math.round(Math.abs(cw))}m`;
+            if(window.draw.dis) outText += `${Math.round(realDist)}m`; // 套用真實距離
 
-            drawCircle(edgeX, edgeY, 4, 'rgba(255, 0, 0, 0.8)', true); 
             if(outText !== "") {
-                drawText(outText.trim(), edgeX, edgeY + 14, 11, '#FFA500'); 
+                let textX = cntX + (radius + 20) * Math.cos(angle);
+                let textY = cntY + (radius + 20) * Math.sin(angle);
+                drawText(outText.trim(), textX, textY, 11, '#FFA500'); 
             }
             
             continue; 
@@ -937,19 +997,19 @@ function renderESP() {
         
         let h = rB.y - rT.y; 
         let w = h / 2; 
-        let dist = rB.dist; 
-        if (dist > 500 || h < 2 || h > 2000) continue; 
         
-        drawPlayerInfo(rT.x, rT.y, w, h, Math.round(dist), p.teamId, p.cHP, getMaxHP(p.pA), getPlayerName(p.pA), "", false, isTeammate);
+        // 替換原本的深度限制判斷
+        if (realDist > 500 || h < 2 || h > 2000) continue; 
+        
+        // 將原本傳遞 rB.dist 的地方，全面替換成 realDist
+        drawPlayerInfo(rT.x, rT.y, w, h, Math.round(realDist), p.teamId, p.cHP, getMaxHP(p.pA), getPlayerName(p.pA), "", false, isTeammate);
     }
     
-    // 🌟 原本底部的 FPS 已經被移到上面了，這裡只負責在對局內時繪製動態敵人數量
     if(eC === 0) drawText("Count:0", window.sWidth / 2, countY, 17, "#00BFFF", true); 
     else drawText(`Count:${eC}`, window.sWidth / 2, countY, 17, "red", true); 
 
     requestAnimationFrame(renderESP);
 }
-
 
 // ==================== [全新功能] 單次戰術背刺瞬移 ====================
 function standaloneTeleport() {
@@ -1030,7 +1090,7 @@ function processMagnet() {
     if (!window.myPosAddr || !window.myPlayerAddr) return; // 必須先獲取到自身座標
 
     let myHP = readF32(window.myPlayerAddr + OFFSETS.CURRENT_HP);
-    if (myHP <= 0 || myHP > 100000) return; // 玩家自身死亡狀態不執行
+    if (myHP <= 0 || myHP > 100000) return; // 死亡狀態不執行
 
     // 讀取自己當前座標
     let myX = readF32(window.myPosAddr);
@@ -1041,20 +1101,16 @@ function processMagnet() {
     let m = getViewMatrix();
     if (!m) return;
 
+    // m[3] 和 m[11] 代表了攝影機深度的 X 和 Z 投影方向 (Forward Vector)
     let dx = m[3];
     let dz = m[11];
     let len = Math.sqrt(dx * dx + dz * dz);
     if (len < 0.001) return;
 
-    // 加入微小隨機抖動 (Jitter)，範圍約 0.05 米
-    // 作用：強制喚醒遊戲引擎的物理運算，避免怪物進入休眠狀態導致畫面不更新
-    let jitterX = (Math.random() - 0.5) * 0.1;
-    let jitterZ = (Math.random() - 0.5) * 0.1;
-
-    // 計算前方 25 米的目標座標，並加上抖動值
-    let targetX = myX + 25 * (dx / len) + jitterX;
-    let targetY = myY + 0.5; // 稍微抬高 0.5 避免卡地板
-    let targetZ = myZ + 25 * (dz / len) + jitterZ;
+    // 計算前方 25 米的目標座標
+    let targetX = myX + 25 * (dx / len);
+    let targetY = myY + 0.5; // 高度稍微抬高 0.5，避免怪物卡進地板
+    let targetZ = myZ + 25 * (dz / len);
 
     // 獲取玩家陣列
     let sys = getPlayerSystem(); if (!sys) return;
@@ -1068,10 +1124,7 @@ function processMagnet() {
         if (!pA || pA === window.myPlayerAddr) continue;
 
         let cHP = readF32(pA + OFFSETS.CURRENT_HP);
-        
-        // 【修改點】：把原本的 > 100000 拔掉，改成 > 999999999 (九億)
-        // 這樣就能吸到血量超高的 Boss，同時仍保有過濾無效垃圾數據的功能
-        if (cHP <= 0 || cHP > 999999999) continue; 
+        if (cHP <= 0 || cHP > 100000) continue; // 不吸屍體
 
         let tId = readI32(pA + OFFSETS.TEAM_ID);
         if (tId <= 0 || tId >= 100 || tId === window.myTeamId) continue; // 不吸隊友
@@ -1153,7 +1206,7 @@ var app = new Vue({
                     // 卡密已驗證，直接啟動 (因為我們已將 renderESP 設為永久執行，因此不需再次 requestAnimationFrame)
                 } 
                 else {
-                    let pwd = prompt("請輸入繪製卡密：", ""); const validPasswords = ["iovecxin", "iovecxin1"];
+                    let pwd = prompt("請輸入繪製卡密：", ""); const validPasswords = ["iovecxin", "iovecxin1", "8150401C", "8120201E", "8112401E"];
                     if (validPasswords.includes(pwd)) {
                         if (confirm("卡密正確！是否記憶卡密？")) localStorage.setItem('draw_auth_passed', 'true'); else localStorage.removeItem('draw_auth_passed');
                     } else {
