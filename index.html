@@ -115,6 +115,11 @@
         .el-button { margin: 0 !important; width: 100%; font-size: 13px; padding: 8px 0; color: #FFF; background-color: #284A7A; border: none; border-radius: 4px; }
         .el-button:hover, .el-button:focus, .el-button:active { color: #FFF; background-color: #387ACA; }
         .aycollapse { padding: 8px 10px; width: 100%; font-size: 14px; background-color: #284A7A; border-radius: 6px; color: #FFF; margin-bottom: 8px; display: flex; align-items: center; font-weight: bold; }
+
+        /* 覆寫 el-radio-button 暗色系樣式 */
+        .el-radio-button__inner { background-color: #1D2E48 !important; border-color: #555 !important; color: #aaa !important; }
+        .el-radio-button__orig-radio:checked + .el-radio-button__inner { background-color: #409EFF !important; border-color: #409EFF !important; color: #FFF !important; box-shadow: -1px 0 0 0 #409EFF !important; }
+        .el-radio-button:hover .el-radio-button__inner { color: #FFF !important; }
         
         /* 絲滑微調按鈕樣式 */
         .nudge-btn {
@@ -244,7 +249,13 @@
                     
                     <div class="switch-row">
                         <span>開啟繪製</span>
-                        <el-switch v-model="draw.state" @change="toggleDraw" active-color="#409EFF" inactive-color="#25456D"></el-switch>
+                        <div style="display: flex; align-items: center;">
+                            <el-radio-group v-model="serverRegion" size="mini" style="margin-right: 10px;" @change="changeServer">
+                                <el-radio-button label="TW">台服</el-radio-button>
+                                <el-radio-button label="US">美服</el-radio-button>
+                            </el-radio-group>
+                            <el-switch v-model="draw.state" @change="toggleDraw" active-color="#409EFF" inactive-color="#25456D"></el-switch>
+                        </div>
                     </div>
                     <div class="switch-row">
                         <span>主播模式</span>
@@ -662,7 +673,7 @@ window.sWidth = 0; window.sHeight = 0;
 window.iosScale = window.devicePixelRatio || 1;
 window.canvas = null; window.ctx = null;
 
-const OFFSETS = {
+const OFFSETS_TW = {
     MATRIX_BASE: 0x3C591B8,
     MATRIX_OFFSET1: 0xB8,
     MATRIX_OFFSET2: 0x8,
@@ -687,6 +698,34 @@ const OFFSETS = {
     POS_OFFSET5: 0x38, 
     POS_OFFSET6: 0x90,
 };
+
+const OFFSETS_US = {
+    MATRIX_BASE: 0x3F07720,
+    MATRIX_OFFSET1: 0xB8,
+    MATRIX_OFFSET2: 0x8,
+    MATRIX_OFFSET3: 0x10,
+    MATRIX_OFFSET4: 0x2E4,
+    PLAYER_SYSTEM_BASE: 0x3EDC770,
+    PLAYER_SYSTEM_OFFSET1: 0xB8,
+    PLAYER_SYSTEM_OFFSET2: 0x48,
+    PLAYER_COUNT_OFFSET: 0x20,
+    ARRAY_HEADER_OFFSET1: 0x18,
+    ARRAY_HEADER_OFFSET2: 0x30,
+    PLAYER_STRIDE: 0x18,
+    CURRENT_HP: 0x64,
+    MAX_HP: 0x68,
+    TEAM_ID: 0x2CC,
+    NAME_PTR: 0x50,
+    NAME_OFFSET: 0x14,
+    POS_OFFSET1: 0x2A0,
+    POS_OFFSET2: 0x20,
+    POS_OFFSET3: 0x18,
+    POS_OFFSET4: 0x10,
+    POS_OFFSET5: 0x38,
+    POS_OFFSET6: 0x90,
+};
+
+let OFFSETS = OFFSETS_TW;
 
 let PlayerNameCache = new Map(), PlayerMaxHPCache = new Map();
 let lastRenderCacheUpdate = Date.now(), playerCacheUpdateInterval = 10000;
@@ -973,7 +1012,10 @@ function renderESP() {
             window.ctx.lineTo(-4 * window.iosScale, 0); 
             window.ctx.lineTo(-8 * window.iosScale, 7 * window.iosScale); 
             window.ctx.closePath();
-            window.ctx.fillStyle = 'rgba(255, 30, 30, 0.9)'; 
+            
+            // 距離越近箭頭越紅(不透明)，越遠越淡。以 100 米為最高透明度計算標準
+            let arrowAlpha = 1.0 - (Math.min(realDist, 100) / 100) * 0.7; 
+            window.ctx.fillStyle = `rgba(255, 30, 30, ${arrowAlpha})`; 
             window.ctx.fill();
             window.ctx.restore();
             
@@ -1144,6 +1186,7 @@ var app = new Vue({
     el: "#app",
     data() {
         return {
+            serverRegion: 'TW',
             ifshow: true, tabValue: "one", isResizing: false,
             startWidth: 380, startHeight: 380, startX: 0, startY: 0, menuVisible: true,
             showOption1: false, showOption2: false, showOption3: false, showOption4: false,
@@ -1157,6 +1200,7 @@ var app = new Vue({
     mounted() { document.getElementById('app').style.display = 'block'; },
     methods: {
         // 新增：處理開關變更
+        changeServer(val) { OFFSETS = val === 'TW' ? OFFSETS_TW : OFFSETS_US; },
         toggleMagnet(val) {
             // 檢查是否已開啟繪製
             if (val && !this.draw.state) {
