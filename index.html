@@ -725,7 +725,25 @@ const OFFSETS_US = {
     POS_OFFSET6: 0x90,
 };
 
-let OFFSETS = OFFSETS_TW;
+// ==================== 初始啟動攔截 ====================
+let OFFSETS = OFFSETS_TW; // 預設防呆
+let initialRegion = 'TW'; // 記錄初始應該顯示在 UI 的服
+
+// 腳本載入瞬間，立刻判斷當前鎖定的進程
+if (typeof h5gg !== 'undefined') {
+    try {
+        let isTW = h5gg.getRangesList('cmge');
+        let isUS = h5gg.getRangesList('crisisactionca');
+        
+        if (isTW && isTW.length > 0) {
+            OFFSETS = OFFSETS_TW;
+            initialRegion = 'TW';
+        } else if (isUS && isUS.length > 0) {
+            OFFSETS = OFFSETS_US;
+            initialRegion = 'US';
+        }
+    } catch(e) {}
+}
 
 let PlayerNameCache = new Map(), PlayerMaxHPCache = new Map();
 let lastRenderCacheUpdate = Date.now(), playerCacheUpdateInterval = 10000;
@@ -799,17 +817,44 @@ function getPosAddr(pA) {
 // ==================== [一號工人] 僅負責收集基礎資料清單 ====================
 setInterval(function() {
     if(baseAddr === 0) { 
-        try { let r = h5gg.getRangesList('UnityFramework'); if(r && r.length > 0) baseAddr = Number(r[0].start); } catch(e) {} return; 
+        try { 
+            // 動態偵測當前進程，處理中途切換進程的狀況
+            let isTW = h5gg.getRangesList('cmge');
+            let isUS = h5gg.getRangesList('crisisactionca');
+            
+            if (isTW && isTW.length > 0) {
+                OFFSETS = OFFSETS_TW;
+                if(window.app && window.app.serverRegion !== 'TW') window.app.serverRegion = 'TW';
+            } else if (isUS && isUS.length > 0) {
+                OFFSETS = OFFSETS_US;
+                if(window.app && window.app.serverRegion !== 'US') window.app.serverRegion = 'US';
+            }
+
+            // 抓取基址
+            let r = h5gg.getRangesList('UnityFramework'); 
+            if(r && r.length > 0) {
+                baseAddr = Number(r[0].start); 
+            }
+        } catch(e) {} 
+        return; 
     }
     
     let sys = getPlayerSystem();
-    if(!sys) { GlobalPlayerList = []; return; } // 當不在局內時清空列表，不再盲目繪製
+    if(!sys) { GlobalPlayerList = []; return; } 
     
     let pc = readI32(sys + OFFSETS.PLAYER_COUNT_OFFSET);
+    
+    // 🌟 防呆攔截：把人數上限放寬到 1000。如果讀取到記憶體垃圾(幾百萬)，直接阻斷並重置
+    if (pc < 0 || pc > 1000) {
+        baseAddr = 0; // 強制重置，讓下一次迴圈重新找基址，徹底防止亂碼
+        GlobalPlayerList = [];
+        return;
+    }
+    
     if(window.app) window.app.maxPlayers = pc;
     
     let header = readPtr(sys + OFFSETS.ARRAY_HEADER_OFFSET1);
-    if(!header) { GlobalPlayerList = []; return; } // 同理
+    if(!header) { GlobalPlayerList = []; return; } 
     header += OFFSETS.ARRAY_HEADER_OFFSET2;
     
     let newList = [];
@@ -1105,7 +1150,7 @@ function standaloneTeleport() {
     }
 
     let finalTarget = targetEnemy || fallbackEnemy;
-    if (!finalTarget) { alert("場上沒有活著的敵人！"); return; }
+    if (!finalTarget) { alert("場沒有活著的敵人！"); return; }
 
     // 🚀 旁側站位計算：偏移 X 和 Z 軸 1 個單位，高度稍微離地 +2 防止卡地板
     let tX = finalTarget.x + 1.5;
@@ -1186,7 +1231,7 @@ var app = new Vue({
     el: "#app",
     data() {
         return {
-            serverRegion: 'TW',
+            serverRegion: initialRegion,
             ifshow: true, tabValue: "one", isResizing: false,
             startWidth: 380, startHeight: 380, startX: 0, startY: 0, menuVisible: true,
             showOption1: false, showOption2: false, showOption3: false, showOption4: false,
