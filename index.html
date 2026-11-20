@@ -211,6 +211,7 @@
                                 <el-button onclick="yingx()">英心</el-button>
                                 <el-button onclick="xnmlong()">邪能</el-button>
                                 <el-button onclick="baixiang()">白祥</el-button>
+                                <el-button onclick="djzj()">電競戰戟</el-button>
                                 <el-button onclick="bjak()">白金AK</el-button>
                                 <el-button onclick="gou()">(白金)🐶9星up</el-button>
                             </div>
@@ -685,6 +686,31 @@ h5gg.searchNearby('0.38~0.43', 'F32','0x100');
 h5gg.searchNumber('0.38~0.43', 'F32', '0x00000000', '0x200000000');
 h5gg.editAll('0.18', 'F32');
 alert("邪能魔龍微無後")
+}
+}
+function djzj(){//電競戰戟無後射速
+let name = prompt('無後1,微無後2');
+if (name === '1') {
+h5gg.clearResults();
+h5gg.searchNumber('424061~424065', 'I32', '0x00000000', '0x200000000');
+h5gg.searchNearby('0.0975~0.0985', 'F32','0x100');
+h5gg.searchNumber('0.0975~0.0985', 'F32', '0x00000000', '0x200000000');
+//h5gg.editAll('0.075', 'F32');
+h5gg.searchNearby('0.43', 'F32','0x100');
+h5gg.searchNumber('0.43', 'F32', '0x00000000', '0x200000000');
+h5gg.editAll('0', 'F32');
+alert("電競戰戟無後")
+}
+else if (name === '2') {
+h5gg.clearResults();
+h5gg.searchNumber('424061~424065', 'I32', '0x00000000', '0x200000000');
+h5gg.searchNearby('0.0975~0.0985', 'F32','0x100');
+h5gg.searchNumber('0.0975~0.0985', 'F32', '0x00000000', '0x200000000');
+//h5gg.editAll('0.08', 'F32');
+h5gg.searchNearby('0.43', 'F32','0x100');
+h5gg.searchNumber('0.43', 'F32', '0x00000000', '0x200000000');
+h5gg.editAll('0.16', 'F32');
+alert("電競戰戟微無後")
 }
 }
 // ==================== 7. [ESP 透視與瞬移] 全域變數與偏移量 ====================
